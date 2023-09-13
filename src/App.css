@@ -1,0 +1,23 @@
+.btn:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.btn {
+  box-shadow: none !important;
+}
+
+.form-control:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.form-control {
+  box-shadow: none !important;
+  border-color: rgb(1, 109, 55) !important;
+  border-width: 3px;
+}
+
+#add {
+  line-height: 29px;
+}
