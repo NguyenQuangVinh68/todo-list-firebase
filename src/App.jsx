@@ -1,20 +1,49 @@
 import "./App.css";
 import { BiTrash } from "react-icons/bi";
 import { GrEdit } from "react-icons/gr";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { db } from "./firebase_config";
+import { addDoc, getDocs, deleteDoc, collection, serverTimestamp, doc, orderBy, query } from "firebase/firestore";
+
 
 function App() {
   const [todo, setTodo] = useState("");
   const [todos, setTodos] = useState([]);
   const [isUpdate, setIsUpdate] = useState(false);
 
+  useEffect(() => {
+    getTodos()
+  }, [])
+
+
+  async function getTodos() {
+    const snapshot = await getDocs(collection(db, "todos"), orderBy('timestamp', "desc"))
+
+    setTodos(snapshot.docs.map(doc => ({
+      id: doc.id,
+      todo: doc.data().todo,
+      is_progress: doc.data().is_progress,
+      timestamp: doc.data().timestamp
+    })))
+  }
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (todo !== "") {
-      setTodos([...todos, todo]);
-      setTodo("");
-    }
+    // if (todo !== "") {
+    //   setTodos([...todos, todo]);
+    //   setTodo("");
+    // }
+
+    addDoc(collection(db, "todos"), {
+      is_progress: true,
+      todo: todo,
+      timestamp: serverTimestamp()
+    });
+    setTodo("");
+    getTodos()
   };
+
+
 
   const handleEdit = (index) => {
     setIsUpdate(true);
@@ -27,12 +56,13 @@ function App() {
     setTodo("");
   };
 
-  const handleDelete = (index) => {
-    const newTodos = todos.filter((item) => item != todos[index]);
-    setTodos(newTodos);
+  const handleDelete = async (id) => {
+    // const newTodos = todos.filter((item) => item != todos[index]);
+    await deleteDoc(doc(db, 'todos', id))
+    getTodos()
   };
 
-  const ListTodo = ({ todo, index }) => {
+  const ListTodo = ({ todo, id }) => {
     return (
       <li className="bg-success py-3 px-4 rounded-3 text-white d-flex align-items-center justify-content-between mt-3 ">
         <p className="m-0">{todo}</p>
@@ -40,14 +70,14 @@ function App() {
           <button
             className="delete-me  btn btn-light  btn-sm"
             id="complate"
-            onClick={() => handleEdit(index)}
+            onClick={() => handleEdit(id)}
           >
             <GrEdit />
           </button>
           <button
             className="edit-me btn btn-light  btn-sm mr-1"
             id="delete"
-            onClick={() => handleDelete(index)}
+            onClick={() => handleDelete(id)}
           >
             <BiTrash />
           </button>
@@ -93,7 +123,7 @@ function App() {
           </div>
           <ul className="mt-3 w-100 px-4 " style={{ cursor: "pointer" }}>
             {todos.map((item, index) => {
-              return <ListTodo key={index} todo={item} index={index} />;
+              return <ListTodo key={index} todo={item.todo} id={item.id} />;
             })}
           </ul>
         </div>
