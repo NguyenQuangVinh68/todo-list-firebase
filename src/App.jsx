@@ -3,13 +3,12 @@ import { BiTrash } from "react-icons/bi";
 import { GrEdit } from "react-icons/gr";
 import { useEffect, useState } from "react";
 import { db } from "./firebase_config";
-import { addDoc, getDocs, deleteDoc, collection, serverTimestamp, doc, orderBy, query } from "firebase/firestore";
-
+import { addDoc, getDocs, deleteDoc, collection, serverTimestamp, doc, getDoc, orderBy, updateDoc } from "firebase/firestore";
+import Swal from "sweetalert2";
 
 function App() {
   const [todo, setTodo] = useState("");
   const [todos, setTodos] = useState([]);
-  const [isUpdate, setIsUpdate] = useState(false);
 
   useEffect(() => {
     getTodos()
@@ -22,20 +21,18 @@ function App() {
     setTodos(snapshot.docs.map(doc => ({
       id: doc.id,
       todo: doc.data().todo,
-      is_progress: doc.data().is_progress,
+      inprogress: doc.data().inprogress,
       timestamp: doc.data().timestamp
     })))
+
+
   }
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // if (todo !== "") {
-    //   setTodos([...todos, todo]);
-    //   setTodo("");
-    // }
 
     addDoc(collection(db, "todos"), {
-      is_progress: true,
+      inprogress: true,
       todo: todo,
       timestamp: serverTimestamp()
     });
@@ -43,36 +40,64 @@ function App() {
     getTodos()
   };
 
+  const handleUpdate = async (id, inprogress) => {
 
+    if (inprogress) {
+      Swal.fire({
+        title: 'You have completed',
+        width: 600,
+        padding: '3em',
+        color: '#716add',
+        background: '#fff url(/images/trees.png)',
+        backdrop: `
+          rgba(0,0,123,0.4)
+          url("https://sweetalert2.github.io/images/nyan-cat.gif")
+          left top
+          no-repeat
+        `
+      })
+    }
 
-  const handleEdit = (index) => {
-    setIsUpdate(true);
-    setTodo(todos[index]);
-  };
-
-  const handleUpdate = (todo) => {
-    setTodos([...todos, todo]);
-    setIsUpdate(false);
-    setTodo("");
-  };
-
-  const handleDelete = async (id) => {
-    // const newTodos = todos.filter((item) => item != todos[index]);
-    await deleteDoc(doc(db, 'todos', id))
+    await updateDoc(doc(db, "todos", id), { inprogress: !inprogress })
     getTodos()
   };
 
-  const ListTodo = ({ todo, id }) => {
+  const handleDelete = (id) => {
+
+    Swal.fire({
+      title: 'Are you sure?',
+      text: "You won't be able to revert this!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, delete it!',
+      cancelButtonText: 'No, cancel!',
+      reverseButtons: true
+    }).then((result) => {
+      if (result.isConfirmed) {
+        deleteDoc(doc(db, 'todos', id))
+        getTodos()
+      }
+    })
+
+
+  };
+
+  const ListTodo = ({ todo, id, inprogress }) => {
     return (
-      <li className="bg-success py-3 px-4 rounded-3 text-white d-flex align-items-center justify-content-between mt-3 ">
-        <p className="m-0">{todo}</p>
+      <li className="bg-success py-3 px-4 rounded-3 text-white d-flex align-items-center justify-content-between my-3 ">
+        <div>
+          <p className="m-0" style={{ textDecorationLine: inprogress ? "none" : "line-through" }}>{todo}</p>
+          <span style={{ fontSize: "10px" }}>
+            {inprogress ? "In Progress " : "Done "}
+          </span>
+        </div>
         <div className="d-flex justify-content-end gap-2">
           <button
-            className="delete-me  btn btn-light  btn-sm"
-            id="complate"
-            onClick={() => handleEdit(id)}
+            className="edit-me btn btn-light  btn-sm mr-1"
+            id="delete"
+            onClick={() => handleUpdate(id, inprogress)}
           >
-            <GrEdit />
+            {inprogress ? "Done" : "UnDone"}
           </button>
           <button
             className="edit-me btn btn-light  btn-sm mr-1"
@@ -85,7 +110,6 @@ function App() {
       </li>
     );
   };
-
   return (
     <div className="App bg-success " style={{ height: "100vh" }}>
       <div className="container pt-5 " style={{ width: 700, margin: "0 auto" }}>
@@ -104,28 +128,21 @@ function App() {
             </div>
             <div className="col-auto" />
             <div className="col-auto ">
-              {isUpdate ? (
-                <button
-                  className="btn btn-success "
-                  type="button"
-                  onClick={() => handleUpdate(todo)}
-                >
-                  Update
+              <form onSubmit={handleSubmit}>
+                <button className="btn btn-success " type="submit" id="add">
+                  Add
                 </button>
-              ) : (
-                <form onSubmit={handleSubmit}>
-                  <button className="btn btn-success " type="submit" id="add">
-                    Add
-                  </button>
-                </form>
-              )}
+              </form>
             </div>
           </div>
-          <ul className="mt-3 w-100 px-4 " style={{ cursor: "pointer" }}>
+          <ul className="mt-3 w-100 px-4 " style={{ maxHeight: "330px", overflowY: "scroll" }}>
             {todos.map((item, index) => {
-              return <ListTodo key={index} todo={item.todo} id={item.id} />;
+              return <ListTodo key={index} todo={item.todo} id={item.id} inprogress={item.inprogress} />;
             })}
           </ul>
+          {todos.length < 1 ? null : (
+            <p className="text-center" >{`You have ${todos.length} todos`}</p>
+          )}
         </div>
       </div>
     </div>
